@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - ATOM-EDU Twin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5">
+            <i class="fas fa-tachometer-alt text-primary me-2"></i>Training Dashboard
+        </h1>
+        <p class="lead">Welcome back, {{ user.username }}! Ready for today's training?</p>
+    </div>
+</div>
+
+<!-- Student Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="dashboard-stat">
+            <div class="stat-value">{{ profile.total_training_hours|floatformat:1 }}</div>
+            <div class="stat-label">Training Hours</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-stat">
+            <div class="stat-value">{{ profile.average_score|floatformat:1 }}</div>
+            <div class="stat-label">Average Score</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-stat">
+            <div class="stat-value">{{ profile.safety_rating|floatformat:0 }}%</div>
+            <div class="stat-label">Safety Rating</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-stat">
+            <div class="stat-value">{{ active_sessions.count }}</div>
+            <div class="stat-label">Active Sessions</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Available Scenarios -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-list-check me-2"></i>Available Training Scenarios</span>
+                <span class="badge bg-primary">{{ scenarios.count }} scenarios</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for scenario in scenarios %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ scenario.name }}</h5>
+                                <p class="card-text text-muted small">{{ scenario.description|truncatewords:20 }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="badge bg-{% if scenario.difficulty == 1 %}success{% elif scenario.difficulty == 2 %}info{% elif scenario.difficulty == 3 %}warning{% else %}danger{% endif %}">
+                                            Level {{ scenario.difficulty }}
+                                        </span>
+                                        <span class="badge bg-secondary ms-1">{{ scenario.get_scenario_type_display }}</span>
+                                    </div>
+                                    <a href="{% url 'simulation' %}?scenario={{ scenario.id }}" 
+                                       class="btn btn-nuclear btn-sm">
+                                        Start Training <i class="fas fa-play ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-info">No scenarios available. Contact instructor.</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Sessions -->
+        {% if active_sessions %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="fas fa-bolt me-2"></i>Active Training Sessions
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Started</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in active_sessions %}
+                            <tr>
+                                <td>{{ session.scenario.name }}</td>
+                                <td>{{ session.start_time|timesince }} ago</td>
+                                <td>
+                                    <span class="badge bg-success">Active</span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'simulation_session' session.session_id %}" 
+                                       class="btn btn-primary btn-sm">
+                                        Continue <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Start -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-rocket me-2"></i>Quick Start
+            </div>
+            <div class="card-body">
+                <p class="card-text">Start a new training session with recommended scenario:</p>
+                {% if scenarios.first %}
+                <div class="d-grid gap-2">
+                    <a href="{% url 'simulation' %}?scenario={{ scenarios.first.id }}" 
+                       class="btn btn-nuclear">
+                        <i class="fas fa-play-circle me-2"></i>Start Reactor Startup Training
+                    </a>
+                    <a href="{% url 'simulation' %}?scenario=3" 
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Emergency Response Training
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Performance -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-line me-2"></i>Recent Performance
+            </div>
+            <div class="card-body">
+                {% if completed_sessions %}
+                <div class="list-group">
+                    {% for session in completed_sessions %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ session.scenario.name }}</h6>
+                            <small>{{ session.start_time|date:"M d" }}</small>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Score: <strong>{{ session.score|floatformat:1 }}</strong></span>
+                            <span class="badge bg-{% if session.safety_violations == 0 %}success{% else %}danger{% endif %}">
+                                {{ session.safety_violations }} violations
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">No completed sessions yet.</p>
+                {% endif %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'profile' %}" class="btn btn-outline-secondary btn-sm">
+                        View Full History <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

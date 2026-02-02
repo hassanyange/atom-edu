@@ -1,0 +1,763 @@
+{% extends 'base.html' %}
+{% extends 'base.html' %}
+
+
+{% block title %}{{ scenario.name }} - ATOM-EDU Twin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .control-panel {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .reactor-display {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        min-height: 500px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .reactor-core {
+        position: relative;
+        width: 200px;
+        height: 300px;
+        margin: 30px auto;
+        background: linear-gradient(to bottom, #343a40, #495057);
+        border-radius: 100px 100px 10px 10px;
+        border: 3px solid #6c757d;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    }
+    
+    .core-temperature {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        background: linear-gradient(to top, #ff6b6b, #ffa8a8);
+        border-radius: 0 0 7px 7px;
+        transition: height 0.5s ease;
+    }
+    
+    .control-rod {
+        position: absolute;
+        width: 15px;
+        background: linear-gradient(to bottom, #adb5bd, #6c757d);
+        border-radius: 3px;
+        left: 50%;
+        transform: translateX(-50%);
+        transition: height 0.3s ease;
+    }
+    
+    .parameter-display {
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .param-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        text-align: center;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .param-label {
+        font-size: 0.9rem;
+        text-align: center;
+        opacity: 0.8;
+    }
+    
+    .slider-container {
+        margin: 15px 0;
+    }
+    
+    .slider-value {
+        font-weight: 600;
+        color: var(--primary-blue);
+    }
+    
+    #feedback-panel {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .emergency-alert {
+        animation: pulse 1.5s infinite;
+        border: 2px solid #dc3545 !important;
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2">
+                    <i class="fas fa-reactor text-warning me-2"></i>{{ scenario.name }}
+                </h1>
+                <p class="text-muted mb-0">{{ scenario.description }}</p>
+            </div>
+            <div>
+                <span class="badge bg-{% if scenario.difficulty == 1 %}success{% elif scenario.difficulty == 2 %}info{% elif scenario.difficulty == 3 %}warning{% else %}danger{% endif %} me-2">
+                    Difficulty: {{ scenario.difficulty }}/5
+                </span>
+                <button id="end-session-btn" class="btn btn-outline-danger">
+                    <i class="fas fa-stop-circle me-1"></i>End Session
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Reactor Display -->
+    <div class="col-lg-8">
+        <div class="reactor-display mb-4">
+            <div class="row">
+                <div class="col-md-8">
+                    <h4 class="mb-4">
+                        <i class="fas fa-industry me-2"></i>Reactor Digital Twin
+                        <span id="simulation-status" class="badge bg-success ms-2">Running</span>
+                    </h4>
+                    
+                    <!-- Reactor Visualization -->
+                    <div class="reactor-core" id="reactor-core">
+                        <div class="core-temperature" id="core-temperature" style="height: 50%;"></div>
+                        <div class="control-rod" id="control-rod" style="height: 60%; top: 20%;"></div>
+                    </div>
+                    
+                    <!-- Safety Status -->
+                    <div class="row mt-4" id="safety-status">
+                        <div class="col-12">
+                            <div class="alert alert-success" id="safety-alert">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <strong>Safety Status:</strong> All systems nominal
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Parameter Displays -->
+                <div class="col-md-4">
+                    <h5 class="mb-3">Live Parameters</h5>
+                    
+                    <div class="parameter-display">
+                        <div class="param-value" id="param-power">20.0</div>
+                        <div class="param-label">POWER (MW)</div>
+                    </div>
+                    
+                    <div class="parameter-display">
+                        <div class="param-value" id="param-temp">280.0</div>
+                        <div class="param-label">CORE TEMP (°C)</div>
+                    </div>
+                    
+                    <div class="parameter-display">
+                        <div class="param-value" id="param-pressure">155.0</div>
+                        <div class="param-label">PRESSURE (bar)</div>
+                    </div>
+                    
+                    <div class="parameter-display">
+                        <div class="param-value" id="param-neutron">1.0e13</div>
+                        <div class="param-label">NEUTRON FLUX</div>
+                    </div>
+                    
+                    <div class="parameter-display">
+                        <div class="param-value" id="param-time">0.0</div>
+                        <div class="param-label">SIM TIME (s)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-gamepad me-2"></i>Reactor Control Panel
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Control Rods -->
+                    <div class="col-md-6">
+                        <h5>Control Rods</h5>
+                        <p class="text-muted small">Adjust neutron absorption (0-100% withdrawn)</p>
+                        
+                        <div class="slider-container">
+                            <input type="range" class="form-range" id="control-rod-slider" 
+                                   min="0" max="100" value="70" step="1">
+                            <div class="d-flex justify-content-between">
+                                <small>Inserted (0%)</small>
+                                <span class="slider-value" id="rod-value">70%</span>
+                                <small>Withdrawn (100%)</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex mt-3">
+                            <button class="btn btn-outline-primary" id="rod-5">
+                                <i class="fas fa-minus"></i> 5%
+                            </button>
+                            <button class="btn btn-outline-primary" id="rod+5">
+                                <i class="fas fa-plus"></i> 5%
+                            </button>
+                            <button class="btn btn-danger" id="scram-btn">
+                                <i class="fas fa-skull-crossbones"></i> SCRAM
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Coolant System -->
+                    <div class="col-md-6">
+                        <h5>Coolant System</h5>
+                        <p class="text-muted small">Adjust primary coolant flow rate</p>
+                        
+                        <div class="slider-container">
+                            <input type="range" class="form-range" id="coolant-slider" 
+                                   min="0" max="150" value="100" step="1">
+                            <div class="d-flex justify-content-between">
+                                <small>0%</small>
+                                <span class="slider-value" id="coolant-value">100%</span>
+                                <small>150%</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex mt-3">
+                            <button class="btn btn-outline-info" id="coolant-10">
+                                <i class="fas fa-minus"></i> 10%
+                            </button>
+                            <button class="btn btn-outline-info" id="coolant+10">
+                                <i class="fas fa-plus"></i> 10%
+                            </button>
+                            <button class="btn btn-warning" id="emergency-cooling">
+                                <i class="fas fa-fire-extinguisher"></i> Emergency Cooling
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Power Demand -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h5>Power Demand Control</h5>
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-outline-secondary" data-power="10">10 MW</button>
+                            <button class="btn btn-outline-secondary" data-power="30">30 MW</button>
+                            <button class="btn btn-outline-secondary" data-power="50">50 MW</button>
+                            <button class="btn btn-outline-secondary" data-power="70">70 MW</button>
+                            <button class="btn btn-outline-secondary" data-power="90">90 MW</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Mentor & Feedback -->
+    <div class="col-lg-4">
+        <!-- AI Mentor Panel -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-robot me-2"></i>AI Mentor
+                <span class="badge bg-light text-dark float-end">Live</span>
+            </div>
+            <div class="card-body" id="feedback-panel">
+                <div class="text-center py-3" id="loading-feedback">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">AI Mentor is analyzing your performance...</p>
+                </div>
+                
+                <!-- Feedback messages will appear here -->
+                <div id="feedback-messages"></div>
+            </div>
+        </div>
+        
+        <!-- Session Info -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Training Information
+            </div>
+            <div class="card-body">
+                <h6>Scenario: {{ scenario.name }}</h6>
+                <p class="small">{{ scenario.description }}</p>
+                
+                <hr>
+                
+                <h6>Learning Objectives:</h6>
+                <p class="small">{{ scenario.learning_objectives }}</p>
+                
+                <hr>
+                
+                <h6>Session Performance</h6>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="display-6" id="session-score">0.0</div>
+                        <small class="text-muted">Current Score</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="display-6" id="safety-violations">0</div>
+                        <small class="text-muted">Safety Violations</small>
+                    </div>
+                </div>
+                
+                <div class="d-grid mt-3">
+                    <button class="btn btn-outline-primary" id="show-tips">
+                        <i class="fas fa-lightbulb me-1"></i>Show Nuclear Theory Tips
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Session ID (hidden) -->
+<input type="hidden" id="session-id" value="{{ session_id }}">
+<input type="hidden" id="scenario-id" value="{{ scenario.id }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let sessionId = null;
+    let updateInterval = null;
+    let currentState = {};
+    let feedbackHistory = [];
+    
+    // DOM Ready
+    $(document).ready(function() {
+        const sessionField = $('#session-id').val();
+        
+        if (sessionField === 'new') {
+            startNewSession();
+        } else {
+            sessionId = sessionField;
+            startExistingSession();
+        }
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Start state updates
+        updateReactorState();
+        updateInterval = setInterval(updateReactorState, 1000);
+    });
+    
+    // Start new session
+    function startNewSession() {
+        const scenarioId = $('#scenario-id').val();
+        
+        $.ajax({
+            url: '/api/start-session/',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                scenario_id: scenarioId
+            }),
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            success: function(response) {
+                if (response.success) {
+                    sessionId = response.session_id;
+                    showNotification('success', response.message);
+                    
+                    // Update URL without reloading
+                    const newUrl = `/simulation/${sessionId}/`;
+                    window.history.pushState({}, '', newUrl);
+                }
+            },
+            error: function(xhr) {
+                showNotification('error', 'Failed to start session');
+            }
+        });
+    }
+    
+    function startExistingSession() {
+        showNotification('info', 'Resuming training session...');
+    }
+    
+    // Update reactor state from server
+    function updateReactorState() {
+        if (!sessionId) return;
+        
+        $.ajax({
+            url: `/api/session/${sessionId}/state/`,
+            method: 'GET',
+            success: function(response) {
+                currentState = response.state;
+                
+                // Update displays
+                updateParameterDisplays();
+                updateReactorVisualization();
+                updateSafetyStatus(response.safety);
+                updateFeedback(response.feedback);
+                updatePerformanceMetrics();
+                
+                // Hide loading
+                $('#loading-feedback').hide();
+            },
+            error: function(xhr) {
+                if (xhr.status === 404) {
+                    showNotification('error', 'Session not found. Starting new session...');
+                    startNewSession();
+                }
+            }
+        });
+    }
+    
+    // Update parameter displays
+    function updateParameterDisplays() {
+        $('#param-power').text(currentState.power_level.toFixed(1));
+        $('#param-temp').text(currentState.temperature.toFixed(1));
+        $('#param-pressure').text(currentState.pressure.toFixed(1));
+        $('#param-neutron').text(formatScientific(currentState.neutron_flux));
+        $('#param-time').text(currentState.simulation_time.toFixed(1));
+        
+        // Update sliders
+        $('#control-rod-slider').val(currentState.control_rod_position);
+        $('#rod-value').text(currentState.control_rod_position.toFixed(0) + '%');
+        
+        $('#coolant-slider').val(currentState.coolant_flow_rate);
+        $('#coolant-value').text(currentState.coolant_flow_rate.toFixed(0) + '%');
+    }
+    
+    // Update reactor visualization
+    function updateReactorVisualization() {
+        // Temperature height (0-100% based on 200-400°C range)
+        const tempPercent = Math.min(100, Math.max(0, 
+            (currentState.temperature - 200) / 2
+        ));
+        $('#core-temperature').css('height', tempPercent + '%');
+        
+        // Control rod position
+        const rodPercent = currentState.control_rod_position;
+        $('#control-rod').css('height', (100 - rodPercent * 0.6) + '%');
+        
+        // Color based on temperature
+        let tempColor = '#20c997'; // Green
+        if (currentState.temperature > 320) tempColor = '#ff922b'; // Orange
+        if (currentState.temperature > 350) tempColor = '#ff6b6b'; // Red
+        
+        $('#core-temperature').css('background', 
+            `linear-gradient(to top, ${tempColor}, ${lightenColor(tempColor, 30)})`
+        );
+    }
+    
+    // Update safety status
+    function updateSafetyStatus(safety) {
+        const alertDiv = $('#safety-alert');
+        const statusBadge = $('#simulation-status');
+        
+        alertDiv.removeClass('alert-success alert-warning alert-danger emergency-alert');
+        
+        if (safety.emergency_level === 0) {
+            alertDiv.addClass('alert-success');
+            alertDiv.html('<i class="fas fa-shield-alt me-2"></i><strong>Safety Status:</strong> All systems nominal');
+            statusBadge.removeClass('bg-warning bg-danger').addClass('bg-success');
+        } else if (safety.emergency_level <= 2) {
+            alertDiv.addClass('alert-warning');
+            alertDiv.html('<i class="fas fa-exclamation-triangle me-2"></i><strong>Warning:</strong> Parameters approaching limits');
+            statusBadge.removeClass('bg-success bg-danger').addClass('bg-warning');
+        } else {
+            alertDiv.addClass('alert-danger emergency-alert');
+            alertDiv.html('<i class="fas fa-radiation me-2"></i><strong>EMERGENCY:</strong> Safety limits exceeded!');
+            statusBadge.removeClass('bg-success bg-warning').addClass('bg-danger');
+        }
+    }
+    
+    // Update AI feedback
+    function updateFeedback(feedbackList) {
+        const container = $('#feedback-messages');
+        
+        // Clear old feedback (keep last 10)
+        if (feedbackHistory.length > 10) {
+            feedbackHistory = feedbackHistory.slice(-10);
+        }
+        
+        // Add new feedback
+        feedbackList.forEach(fb => {
+            const fbId = fb.type + '-' + Date.now();
+            if (!feedbackHistory.find(f => f.message === fb.message)) {
+                feedbackHistory.push(fb);
+                
+                const fbClass = getFeedbackClass(fb.type);
+                const icon = getFeedbackIcon(fb.type);
+                
+                const fbHtml = `
+                <div class="alert ${fbClass} alert-dismissible fade show" id="${fbId}">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">${icon}</div>
+                        <div class="flex-grow-1 ms-3">
+                            <strong>${fb.message}</strong>
+                            ${fb.suggestion ? `<div class="small mt-1">${fb.suggestion}</div>` : ''}
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" onclick="dismissFeedback('${fbId}')"></button>
+                </div>
+                `;
+                
+                container.prepend(fbHtml);
+                
+                // Auto-dismiss after 10 seconds (except critical)
+                if (fb.type !== 'critical') {
+                    setTimeout(() => dismissFeedback(fbId), 10000);
+                }
+            }
+        });
+        
+        // Show "no feedback" if empty
+        if (container.children().length === 0) {
+            container.html(`
+                <div class="alert alert-info">
+                    <i class="fas fa-thumbs-up me-2"></i>
+                    <strong>Good work!</strong> Keep maintaining optimal parameters.
+                </div>
+            `);
+        }
+    }
+    
+    // Update performance metrics
+    function updatePerformanceMetrics() {
+        // Calculate simple score based on stability
+        let score = 100;
+        
+        // Deduct for high temperature
+        if (currentState.temperature > 320) score -= 20;
+        if (currentState.temperature > 350) score -= 30;
+        
+        // Deduct for power fluctuations
+        const powerStable = Math.abs(currentState.power_level - 50) < 20;
+        if (!powerStable) score -= 15;
+        
+        $('#session-score').text(score.toFixed(1));
+        
+        // Count safety violations (emergency level > 2)
+        const violations = currentState.emergency_level > 2 ? 1 : 0;
+        $('#safety-violations').text(violations);
+    }
+    
+    // Setup event listeners for controls
+    function setupEventListeners() {
+        // Control rod slider
+        $('#control-rod-slider').on('input', function() {
+            const value = $(this).val();
+            $('#rod-value').text(value + '%');
+        });
+        
+        $('#control-rod-slider').on('change', function() {
+            sendControlAction('control_rod', parseFloat($(this).val()));
+        });
+        
+        // Coolant slider
+        $('#coolant-slider').on('input', function() {
+            const value = $(this).val();
+            $('#coolant-value').text(value + '%');
+        });
+        
+        $('#coolant-slider').on('change', function() {
+            sendControlAction('coolant_flow', parseFloat($(this).val()));
+        });
+        
+        // Quick adjustment buttons
+        $('#rod-5').click(() => adjustControlRods(-5));
+        $('#rod+5').click(() => adjustControlRods(5));
+        $('#coolant-10').click(() => adjustCoolant(-10));
+        $('#coolant+10').click(() => adjustCoolant(10));
+        
+        // Emergency buttons
+        $('#scram-btn').click(() => sendControlAction('scram', 1));
+        $('#emergency-cooling').click(() => sendControlAction('coolant_flow', 150));
+        
+        // Power demand buttons
+        $('[data-power]').click(function() {
+            const power = $(this).data('power');
+            sendControlAction('power_demand', power);
+        });
+        
+        // End session
+        $('#end-session-btn').click(endSession);
+        
+        // Show tips
+        $('#show-tips').click(showNuclearTips);
+    }
+    
+    // Send control action to server
+    function sendControlAction(action, value) {
+        if (!sessionId) return;
+        
+        $.ajax({
+            url: `/api/session/${sessionId}/control/`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                action: action,
+                value: value
+            }),
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            success: function(response) {
+                // Update state immediately
+                if (response.state) {
+                    currentState = response.state;
+                    updateParameterDisplays();
+                    updateReactorVisualization();
+                }
+            }
+        });
+    }
+    
+    // Adjust control rods by delta
+    function adjustControlRods(delta) {
+        const current = parseFloat($('#control-rod-slider').val());
+        const newValue = Math.max(0, Math.min(100, current + delta));
+        $('#control-rod-slider').val(newValue);
+        $('#rod-value').text(newValue + '%');
+        sendControlAction('control_rod', newValue);
+    }
+    
+    // Adjust coolant by delta
+    function adjustCoolant(delta) {
+        const current = parseFloat($('#coolant-slider').val());
+        const newValue = Math.max(0, Math.min(150, current + delta));
+        $('#coolant-slider').val(newValue);
+        $('#coolant-value').text(newValue + '%');
+        sendControlAction('coolant_flow', newValue);
+    }
+    
+    // End session
+    function endSession() {
+        if (!confirm('End training session and generate report?')) return;
+        
+        $.ajax({
+            url: `/api/session/${sessionId}/end/`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            success: function(response) {
+                clearInterval(updateInterval);
+                showNotification('success', 'Session completed! Report generated.');
+                
+                // Redirect to dashboard after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/dashboard/';
+                }, 2000);
+            }
+        });
+    }
+    
+    // Show nuclear theory tips
+    function showNuclearTips() {
+        const tips = [
+            "Control rods absorb neutrons to regulate the chain reaction. Boron or cadmium are common materials.",
+            "The negative temperature coefficient provides inherent safety: as temperature increases, reactivity decreases.",
+            "Coolant serves dual purpose: heat removal and neutron moderation in light water reactors.",
+            "SCRAM (Safety Control Rod Axe Man) rapidly inserts all control rods to shut down the reactor.",
+            "Reactor period is the time required for power to change by a factor of e (2.718).",
+            "Criticality is maintained when neutron production equals neutron loss (k-effective = 1).",
+            "Pressurized Water Reactors (PWRs) maintain water in liquid state under high pressure (~155 bar).",
+            "Decay heat continues to be produced after shutdown and requires continuous cooling.",
+            "Neutron flux is measured in n/cm²·s and indicates the intensity of the chain reaction.",
+            "Reactivity is a measure of how far the reactor is from criticality (positive = supercritical)."
+        ];
+        
+        const randomTip = tips[Math.floor(Math.random() * tips.length)];
+        
+        const tipHtml = `
+        <div class="alert alert-info alert-dismissible fade show mt-3">
+            <i class="fas fa-graduation-cap me-2"></i>
+            <strong>Nuclear Theory Tip:</strong> ${randomTip}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        `;
+        
+        $('#feedback-messages').prepend(tipHtml);
+    }
+    
+    // Helper functions
+    function formatScientific(num) {
+        return num.toExponential(1);
+    }
+    
+    function lightenColor(color, percent) {
+        // Simplified color lightening
+        return color; // In production, implement proper color manipulation
+    }
+    
+    function getFeedbackClass(type) {
+        const classes = {
+            'warning': 'feedback-warning',
+            'critical': 'feedback-critical',
+            'praise': 'feedback-praise',
+            'suggestion': 'alert-primary',
+            'educational': 'alert-info'
+        };
+        return classes[type] || 'alert-secondary';
+    }
+    
+    function getFeedbackIcon(type) {
+        const icons = {
+            'warning': '<i class="fas fa-exclamation-triangle fa-2x text-warning"></i>',
+            'critical': '<i class="fas fa-radiation fa-2x text-danger"></i>',
+            'praise': '<i class="fas fa-star fa-2x text-success"></i>',
+            'suggestion': '<i class="fas fa-lightbulb fa-2x text-primary"></i>',
+            'educational': '<i class="fas fa-book fa-2x text-info"></i>'
+        };
+        return icons[type] || '<i class="fas fa-info-circle fa-2x"></i>';
+    }
+    
+    function dismissFeedback(id) {
+        $('#' + id).alert('close');
+    }
+    
+    function showNotification(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 
+                          type === 'error' ? 'alert-danger' : 'alert-info';
+        
+        const notification = $(`
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+                 style="top: 80px; right: 20px; z-index: 1050; min-width: 300px;">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+        
+        $('body').append(notification);
+        
+        setTimeout(() => {
+            notification.alert('close');
+        }, 3000);
+    }
+    
+    // CSRF token helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

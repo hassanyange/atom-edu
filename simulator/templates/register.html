@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Register - ATOM-EDU Twin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Join ATOM-EDU Twin
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <h5 class="mb-3">Create Your Account</h5>
+                        
+                        <form method="POST" action="{% url 'register' %}">
+                            {% csrf_token %}
+                            
+                            <div class="mb-3">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Username *
+                                </label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Choose a username" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>Email Address
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="your.email@example.com">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>Password *
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Create a strong password" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="specialization" class="form-label">
+                                    <i class="fas fa-graduation-cap me-1"></i>Specialization
+                                </label>
+                                <select class="form-select" id="specialization" name="specialization">
+                                    <option value="Nuclear Engineering">Nuclear Engineering</option>
+                                    <option value="Reactor Physics">Reactor Physics</option>
+                                    <option value="Radiation Safety">Radiation Safety</option>
+                                    <option value="Thermal Hydraulics">Thermal Hydraulics</option>
+                                    <option value="Nuclear Materials">Nuclear Materials</option>
+                                    <option value="Instrumentation & Control">Instrumentation & Control</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="year_of_study" class="form-label">
+                                    <i class="fas fa-calendar-alt me-1"></i>Year of Study
+                                </label>
+                                <select class="form-select" id="year_of_study" name="year_of_study">
+                                    <option value="1">1st Year</option>
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                    <option value="5">5th Year</option>
+                                    <option value="6">Graduate Student</option>
+                                </select>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-user-plus me-1"></i>Create Account
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-3 text-center">
+                            <p class="small">Already have an account? 
+                                <a href="{% url 'login' %}">Login here</a>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6">
+                        <div class="p-4 bg-light rounded">
+                            <h5 class="mb-3">
+                                <i class="fas fa-rocket text-primary me-2"></i>
+                                Start Your Nuclear Training Journey
+                            </h5>
+                            
+                            <div class="mb-4">
+                                <h6>What you'll get:</h6>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item bg-transparent">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Access to 8 training scenarios
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        AI-powered feedback and mentorship
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Digital twin reactor simulation
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Progress tracking and analytics
+                                    </li>
+                                    <li class="list-group-item bg-transparent">
+                                        <i class="fas fa-check text-success me-2"></i>
+                                        Safety certification preparation
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle me-2"></i>For HackAtom Participants
+                                </h6>
+                                <p class="small mb-0">
+                                    Use demo accounts for quick access:<br>
+                                    <strong>Admin:</strong> admin / admin123<br>
+                                    <strong>Student:</strong> student / student123
+                                </p>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <img src="https://img.icons8.com/color/96/000000/nuclear-plant.png" 
+                                     alt="Nuclear Plant" class="img-fluid mb-2">
+                                <p class="small text-muted">
+                                    Developed by Obninsk Institute for Nuclear Power Engineering
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

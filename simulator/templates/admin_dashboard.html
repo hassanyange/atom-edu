@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Instructor Dashboard - ATOM-EDU Twin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5">
+            <i class="fas fa-chart-line text-primary me-2"></i>Instructor Dashboard
+        </h1>
+        <p class="lead">Training analytics and student performance monitoring</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Total Students</h5>
+                        <h2 class="display-5">{{ total_students }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Training Sessions</h5>
+                        <h2 class="display-5">{{ total_sessions }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-play-circle fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Active Sessions</h5>
+                        <h2 class="display-5">{{ active_sessions }}</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-bolt fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Avg. Score</h5>
+                        <h2 class="display-5">76.5</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-star fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Scenario Performance -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Scenario Performance
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Completed</th>
+                                <th>Avg. Score</th>
+                                <th>Avg. Time</th>
+                                <th>Success Rate</th>
+                                <th>Difficulty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in scenario_stats %}
+                            <tr>
+                                <td>
+                                    <strong>{{ stat.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ stat.count }} sessions</small>
+                                </td>
+                                <td>{{ stat.count }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                            <div class="progress-bar bg-{% if stat.avg_score >= 80 %}success{% elif stat.avg_score >= 60 %}warning{% else %}danger{% endif %}" 
+                                                 style="width: {{ stat.avg_score }}%">
+                                            </div>
+                                        </div>
+                                        <span>{{ stat.avg_score|floatformat:1 }}</span>
+                                    </div>
+                                </td>
+                                <td>15:32</td>
+                                <td>
+                                    {% with rate=stat.avg_score|floatformat:0 %}
+                                    <span class="badge bg-{% if rate >= 80 %}success{% elif rate >= 60 %}warning{% else %}danger{% endif %}">
+                                        {{ rate }}%
+                                    </span>
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if stat.difficulty <= 2 %}success{% elif stat.difficulty <= 4 %}warning{% else %}danger{% endif %}">
+                                        {{ stat.difficulty }}/5
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                                        <p>No performance data available yet</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Student Activity
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Student1 completed "Emergency SCRAM"</h6>
+                            <small>10 minutes ago</small>
+                        </div>
+                        <p class="mb-1">Score: 85.2 | Safety violations: 0</p>
+                    </div>
+                    
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Student2 started "Reactor Startup"</h6>
+                            <small>25 minutes ago</small>
+                        </div>
+                        <p class="mb-1">Currently at 45% power</p>
+                    </div>
+                    
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Admin added new scenario</h6>
+                            <small>1 hour ago</small>
+                        </div>
+                        <p class="mb-1">"VVER-1200 Full Scope Simulator" added</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instructor Tools -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-tools me-2"></i>Instructor Tools
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2 mb-3">
+                    <a href="/admin/" class="btn btn-outline-primary">
+                        <i class="fas fa-cog me-2"></i>Admin Panel
+                    </a>
+                    <button class="btn btn-outline-success">
+                        <i class="fas fa-plus-circle me-2"></i>Add New Scenario
+                    </button>
+                    <button class="btn btn-outline-warning">
+                        <i class="fas fa-file-export me-2"></i>Export Reports
+                    </button>
+                    <button class="btn btn-outline-info">
+                        <i class="fas fa-chart-pie me-2"></i>Analytics Dashboard
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <h6>Quick Actions</h6>
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user-graduate me-2"></i>
+                        View Student Progress
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Review Safety Violations
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tasks me-2"></i>
+                        Grade Assignments
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-comments me-2"></i>
+                        Send Feedback
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Status -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-server me-2"></i>System Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Digital Twin Engine</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Status</span>
+                        <span class="badge bg-success">Running</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Active Simulations</span>
+                        <span class="badge bg-primary">{{ active_sessions }}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>AI Mentor</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Status</span>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Feedback Given</span>
+                        <span class="badge bg-info">1,234</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Database</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Connections</span>
+                        <span class="badge bg-success">12</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Size</span>
+                        <span class="badge bg-secondary">12.4 MB</span>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>HackAtom Demo System</strong><br>
+                    All systems operational for presentation
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

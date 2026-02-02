@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+
+{% block title %}My Profile - ATOM-EDU Twin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-4">
+        <!-- Profile Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i>Student Profile
+                </h4>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <div class="display-4 text-primary">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                </div>
+                
+                <h4>{{ user.username }}</h4>
+                <p class="text-muted">{{ user.email }}</p>
+                
+                <div class="row mt-4">
+                    <div class="col-6">
+                        <div class="border rounded p-2">
+                            <div class="h5 mb-1">{{ profile.year_of_study }}</div>
+                            <small class="text-muted">Year</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-2">
+                            <div class="h5 mb-1">{{ profile.total_training_hours|floatformat:1 }}</div>
+                            <small class="text-muted">Hours</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6>Specialization</h6>
+                <p class="text-primary fw-bold">{{ profile.specialization }}</p>
+                
+                <div class="d-grid mt-3">
+                    <a href="#" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-edit me-1"></i>Edit Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Training Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Safety Rating</h6>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-success" 
+                             style="width: {{ profile.safety_rating }}%">
+                            {{ profile.safety_rating|floatformat:0 }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Efficiency Rating</h6>
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-info" 
+                             style="width: {{ profile.efficiency_rating }}%">
+                            {{ profile.efficiency_rating|floatformat:0 }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Average Score</h6>
+                    <div class="display-6 text-primary">{{ profile.average_score|floatformat:1 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <!-- Training History -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Training Sessions
+                </h4>
+            </div>
+            <div class="card-body">
+                {% if recent_sessions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Scenario</th>
+                                <th>Date</th>
+                                <th>Duration</th>
+                                <th>Score</th>
+                                <th>Violations</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in recent_sessions %}
+                            <tr>
+                                <td>
+                                    <strong>{{ session.scenario.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ session.scenario.get_scenario_type_display }}</small>
+                                </td>
+                                <td>{{ session.start_time|date:"M d, Y" }}</td>
+                                <td>{{ session.duration|floatformat:0 }}s</td>
+                                <td>
+                                    <span class="badge bg-{% if session.score >= 80 %}success{% elif session.score >= 60 %}warning{% else %}danger{% endif %}">
+                                        {{ session.score|floatformat:1 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if session.safety_violations == 0 %}
+                                        <span class="badge bg-success">0</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ session.safety_violations }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.is_active %}
+                                        <span class="badge bg-warning">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Completed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="display-4 text-muted mb-3">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h5>No training sessions yet</h5>
+                    <p class="text-muted">Start your first training session to see your history here.</p>
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-play me-1"></i>Start Training
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Achievements -->
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-trophy me-2"></i>Achievements
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-6 text-center mb-3">
+                        <div class="achievement-icon">
+                            <i class="fas fa-play-circle fa-3x text-success"></i>
+                        </div>
+                        <h6 class="mt-2">First Session</h6>
+                        <small class="text-muted">Complete your first training</small>
+                    </div>
+                    
+                    <div class="col-md-3 col-6 text-center mb-3">
+                        <div class="achievement-icon">
+                            <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                        </div>
+                        <h6 class="mt-2">Safety Master</h6>
+                        <small class="text-muted">0 violations in a session</small>
+                    </div>
+                    
+                    <div class="col-md-3 col-6 text-center mb-3">
+                        <div class="achievement-icon">
+                            <i class="fas fa-bolt fa-3x text-warning"></i>
+                        </div>
+                        <h6 class="mt-2">Power Expert</h6>
+                        <small class="text-muted">Maintain 80%+ power for 5 min</small>
+                    </div>
+                    
+                    <div class="col-md-3 col-6 text-center mb-3">
+                        <div class="achievement-icon">
+                            <i class="fas fa-brain fa-3x text-danger"></i>
+                        </div>
+                        <h6 class="mt-2">Nuclear Theorist</h6>
+                        <small class="text-muted">Read all AI theory tips</small>
+                    </div>
+                </div>
+                
+                {% if profile.achievements %}
+                <div class="mt-4">
+                    <h6>Unlocked Achievements:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for achievement in profile.achievements %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-check me-1"></i>{{ achievement }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted">Complete training sessions to unlock achievements!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
