@@ -5,6 +5,10 @@ psycopg2-binary==2.9.9
 whitenoise==6.6.0
 dj-database-url==2.0.0
 
+django-crispy-forms==2.1
+crispy-bootstrap5==2024.1
+Pillow==10.3.0
+python-dotenv==1.0.1
 # ASGI/WebSocket support
 daphne==4.1.0
 channels==4.1.0
@@ -13,5 +17,5 @@ channels==4.1.0
 # channels-redis==4.2.0
 
 # Additional useful packages
-Pillow==10.3.0
+
 python-dotenv==1.0.1
