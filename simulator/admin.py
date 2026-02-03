@@ -280,7 +280,6 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
         )
         self.message_user(request, f"{updated} enrollments marked as completed")
     mark_as_completed.short_description = "Mark as completed"
-
 @admin.register(SimulationScenario)
 class SimulationScenarioAdmin(admin.ModelAdmin):
     """Admin for Simulation Scenarios"""
@@ -289,7 +288,11 @@ class SimulationScenarioAdmin(admin.ModelAdmin):
     list_filter = ('scenario_type', 'difficulty', 'is_active', 'reactor_model')
     search_fields = ('name', 'description', 'learning_objectives')
     readonly_fields = ('created_at', 'updated_at', 'get_statistics')
-    filter_horizontal = ('courses', 'prerequisites')
+    # REMOVE or COMMENT OUT filter_horizontal for 'courses' if it uses a through model
+    # filter_horizontal = ('courses', 'prerequisites')  # This line is causing the error
+    
+    # If 'prerequisites' doesn't use a through model, you can keep it
+    filter_horizontal = ('prerequisites',)  # Only keep if prerequisites doesn't have through model
     
     fieldsets = (
         ('Basic Information', {
@@ -303,7 +306,8 @@ class SimulationScenarioAdmin(admin.ModelAdmin):
                       'theory_material', 'reference_docs', 'video_tutorial')
         }),
         ('Relationships', {
-            'fields': ('courses', 'prerequisites')
+            # REMOVE 'courses' from here since it uses a through model
+            'fields': ('prerequisites',)  # Only prerequisites if it doesn't use through
         }),
         ('Visual', {
             'fields': ('thumbnail', 'icon_class'),
@@ -321,6 +325,10 @@ class SimulationScenarioAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    # Add this inline if you have a through model for courses
+    # Replace 'CourseScenario' with your actual through model name
+    inlines = []  # Add your Course through model inline here if needed
     
     def get_completion_rate(self, obj):
         return f"{obj.get_completion_rate():.1f}%"
@@ -362,7 +370,7 @@ class SimulationScenarioAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"{updated} scenarios deactivated")
     deactivate_scenarios.short_description = "Deactivate scenarios"
-
+    
 @admin.register(TrainingSession)
 class TrainingSessionAdmin(admin.ModelAdmin):
     """Admin for Training Sessions"""
