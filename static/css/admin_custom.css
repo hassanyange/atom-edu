@@ -1,0 +1,88 @@
+
+/* admin_custom.css - Custom styles for ATOM-EDU admin */
+
+/* Custom header styling */
+#header {
+    background: linear-gradient(135deg, #1a237e, #283593);
+    color: white;
+}
+
+/* Branding */
+#branding h1 {
+    color: white;
+    font-weight: bold;
+}
+
+/* Custom buttons */
+.button, input[type=submit], input[type=button], .submit-row input {
+    background: #1a237e;
+    border-color: #1a237e;
+}
+
+.button:hover, input[type=submit]:hover, input[type=button]:hover {
+    background: #283593;
+}
+
+/* Progress bars */
+.progress-bar {
+    height: 20px;
+    background-color: #4CAF50;
+    border-radius: 5px;
+    margin: 5px 0;
+}
+
+/* Custom table styling */
+#changelist table thead th {
+    background: #1a237e;
+    color: white;
+}
+
+/* Alert boxes */
+.alert {
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* Card-like containers */
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Custom fieldset styling */
+.module h2 {
+    background: #1a237e;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Responsive tables */
+@media (max-width: 768px) {
+    .object-tools {
+        float: none;
+        margin-bottom: 10px;
+    }
+}

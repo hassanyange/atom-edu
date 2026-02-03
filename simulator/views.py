@@ -8,13 +8,14 @@ from django.db.models import Avg  # Added this import
 import json
 import uuid
 from datetime import datetime
+from . import ai_mentor
 
 from .models import SimulationScenario, TrainingSession, AIFeedback, StudentProfile
 from .reactor_logic import SimulationManager
-from .ai_mentor import AIMentor
+# from .ai_mentor import AIMentor
 
 # Initialize AI Mentor
-ai_mentor = AIMentor()
+# ai_mentor = AIMentor()
 
 # ===== AUTHENTICATION VIEWS =====
 
@@ -390,3 +391,614 @@ def admin_dashboard(request):
     }
     
     return render(request, 'admin_dashboard.html', context)  # Fixed typo: 'tamplates/admin_dashboard.html' → 'admin_dashboard.html'
+# simulator/views.py - ADD THESE ADMIN VIEWS
+
+from django.contrib.auth.decorators import user_passes_test
+from .models import Course, CourseEnrollment, CourseScenario, Assignment, AssignmentSubmission
+
+def is_instructor(user):
+    return user.is_staff or user.groups.filter(name='Instructor').exists()
+
+@login_required
+@user_passes_test(is_instructor)
+def instructor_dashboard(request):
+    """Instructor dashboard for course management"""
+    
+    # Get instructor's courses
+    courses = Course.objects.filter(instructor=request.user)
+    
+    # Get course statistics
+    course_stats = []
+    for course in courses:
+        enrollments = CourseEnrollment.objects.filter(course=course, is_active=True)
+        avg_progress = enrollments.aggregate(models.Avg('progress'))['progress__avg'] or 0
+        avg_grade = enrollments.aggregate(models.Avg('grade'))['grade__avg'] or 0
+        
+        course_stats.append({
+            'course': course,
+            'student_count': enrollments.count(),
+            'avg_progress': avg_progress,
+            'avg_grade': avg_grade,
+            'active_assignments': course.assignments.filter(due_date__gte=datetime.now()).count()
+        })
+    
+    # Recent student activity
+    recent_submissions = AssignmentSubmission.objects.filter(
+        assignment__course__instructor=request.user
+    ).order_by('-submitted_at')[:10]
+    
+    context = {
+        'courses': course_stats,
+        'recent_submissions': recent_submissions,
+        'total_students': CourseEnrollment.objects.filter(
+            course__instructor=request.user, is_active=True
+        ).values('student').distinct().count(),
+    }
+    
+    return render(request, 'instructor_dashboard.html', context)
+
+@login_required
+@user_passes_test(is_instructor)
+def course_management(request, course_id):
+    """Manage a specific course"""
+    
+    course = get_object_or_404(Course, id=course_id, instructor=request.user)
+    
+    # Get enrolled students
+    enrollments = CourseEnrollment.objects.filter(course=course, is_active=True)
+    
+    # Get course scenarios
+    course_scenarios = CourseScenario.objects.filter(course=course).order_by('order')
+    
+    # Get assignments
+    assignments = Assignment.objects.filter(course=course).order_by('-due_date')
+    
+    # Student performance data
+    student_performance = []
+    for enrollment in enrollments:
+        sessions = TrainingSession.objects.filter(
+            user=enrollment.student,
+            scenario__course_scenarios__course=course
+        )
+        
+        if sessions.exists():
+            avg_score = sessions.aggregate(models.Avg('score'))['score__avg'] or 0
+            completed = sessions.filter(is_active=False).count()
+            total = course_scenarios.count()
+            
+            student_performance.append({
+                'student': enrollment.student,
+                'enrollment': enrollment,
+                'avg_score': avg_score,
+                'completed': completed,
+                'total': total,
+                'progress': (completed / total * 100) if total > 0 else 0
+            })
+    
+    context = {
+        'course': course,
+        'enrollments': enrollments,
+        'course_scenarios': course_scenarios,
+        'assignments': assignments,
+        'student_performance': student_performance,
+        'scenarios': SimulationScenario.objects.all()  # For adding new scenarios
+    }
+    
+    return render(request, 'course_management.html', context)
+
+@login_required
+@user_passes_test(is_instructor)
+def grade_assignment(request, submission_id):
+    """Grade a student assignment"""
+    
+    submission = get_object_or_404(
+        AssignmentSubmission, 
+        id=submission_id,
+        assignment__course__instructor=request.user
+    )
+    
+    if request.method == 'POST':
+        score = request.POST.get('score')
+        feedback = request.POST.get('feedback', '')
+        
+        try:
+            score = float(score)
+            if 0 <= score <= submission.assignment.max_score:
+                submission.score = score
+                submission.feedback = feedback
+                submission.is_graded = True
+                submission.save()
+                
+                # Update enrollment grade
+                enrollment = CourseEnrollment.objects.get(
+                    student=submission.student,
+                    course=submission.assignment.course
+                )
+                
+                # Recalculate average grade
+                submissions = AssignmentSubmission.objects.filter(
+                    student=submission.student,
+                    assignment__course=submission.assignment.course,
+                    is_graded=True
+                )
+                
+                if submissions.exists():
+                    avg_grade = submissions.aggregate(models.Avg('score'))['score__avg']
+                    enrollment.grade = avg_grade
+                    enrollment.save()
+                
+                messages.success(request, 'Assignment graded successfully!')
+                return redirect('course_management', course_id=submission.assignment.course.id)
+            else:
+                messages.error(request, f'Score must be between 0 and {submission.assignment.max_score}')
+        except ValueError:
+            messages.error(request, 'Please enter a valid number for score')
+    
+    context = {
+        'submission': submission,
+        'max_score': submission.assignment.max_score
+    }
+    
+    return render(request, 'grade_assignment.html', context)
+
+@login_required
+@user_passes_test(is_instructor)
+def create_course(request):
+    """Create a new course"""
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        code = request.POST.get('code')
+        description = request.POST.get('description')
+        level = request.POST.get('level', 'beginner')
+        duration_hours = request.POST.get('duration_hours', 10)
+        
+        course = Course.objects.create(
+            name=name,
+            code=code,
+            description=description,
+            instructor=request.user,
+            level=level,
+            duration_hours=duration_hours
+        )
+        
+        messages.success(request, f'Course {code} created successfully!')
+        return redirect('course_management', course_id=course.id)
+    
+    return render(request, 'create_course.html')
+
+@login_required
+@user_passes_test(is_instructor)
+def add_scenario_to_course(request, course_id):
+    """Add a scenario to a course"""
+    
+    course = get_object_or_404(Course, id=course_id, instructor=request.user)
+    
+    if request.method == 'POST':
+        scenario_id = request.POST.get('scenario_id')
+        order = request.POST.get('order', 0)
+        is_required = request.POST.get('is_required', 'off') == 'on'
+        pass_score = request.POST.get('pass_score', 70.0)
+        
+        try:
+            scenario = SimulationScenario.objects.get(id=scenario_id)
+            pass_score = float(pass_score)
+            
+            CourseScenario.objects.create(
+                course=course,
+                scenario=scenario,
+                order=order,
+                is_required=is_required,
+                pass_score=pass_score
+            )
+            
+            messages.success(request, f'Added {scenario.name} to course')
+        except (SimulationScenario.DoesNotExist, ValueError):
+            messages.error(request, 'Invalid scenario or score')
+    
+    return redirect('course_management', course_id=course.id)
+
+@login_required
+@user_passes_test(is_instructor)
+def create_assignment(request, course_id):
+    """Create an assignment for a course"""
+    
+    course = get_object_or_404(Course, id=course_id, instructor=request.user)
+    
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        scenario_id = request.POST.get('scenario_id')
+        due_date = request.POST.get('due_date')
+        max_score = request.POST.get('max_score', 100.0)
+        
+        try:
+            scenario = None
+            if scenario_id:
+                scenario = SimulationScenario.objects.get(id=scenario_id)
+            
+            max_score = float(max_score)
+            
+            Assignment.objects.create(
+                course=course,
+                title=title,
+                description=description,
+                scenario=scenario,
+                due_date=due_date,
+                max_score=max_score
+            )
+            
+            messages.success(request, 'Assignment created successfully!')
+        except (ValueError, SimulationScenario.DoesNotExist):
+            messages.error(request, 'Invalid data provided')
+    
+    return redirect('course_management', course_id=course.id)
+
+
+# simulator/views.py - ADD STUDENT COURSE VIEWS
+
+@login_required
+def student_courses(request):
+    """Student view of enrolled courses"""
+    
+    enrollments = CourseEnrollment.objects.filter(
+        student=request.user,
+        is_active=True
+    ).select_related('course')
+    
+    # Get recommended courses (not enrolled in)
+    enrolled_course_ids = enrollments.values_list('course_id', flat=True)
+    recommended_courses = Course.objects.filter(
+        is_published=True
+    ).exclude(id__in=enrolled_course_ids)[:3]
+    
+    # Get upcoming assignments
+    upcoming_assignments = Assignment.objects.filter(
+        course__enrollments__student=request.user,
+        course__enrollments__is_active=True,
+        due_date__gte=datetime.now()
+    ).order_by('due_date')[:5]
+    
+    context = {
+        'enrollments': enrollments,
+        'recommended_courses': recommended_courses,
+        'upcoming_assignments': upcoming_assignments,
+    }
+    
+    return render(request, 'student_courses.html', context)
+
+@login_required
+def enroll_course(request, course_id):
+    """Student enrolls in a course"""
+    
+    course = get_object_or_404(Course, id=course_id, is_published=True)
+    
+    # Check if already enrolled
+    if CourseEnrollment.objects.filter(student=request.user, course=course).exists():
+        messages.info(request, f'You are already enrolled in {course.code}')
+        return redirect('student_courses')
+    
+    # Enroll student
+    enrollment = CourseEnrollment.objects.create(
+        student=request.user,
+        course=course
+    )
+    
+    messages.success(request, f'Successfully enrolled in {course.code}!')
+    return redirect('student_courses')
+
+@login_required
+def course_detail(request, course_id):
+    """Detailed course view for student"""
+    
+    enrollment = get_object_or_404(
+        CourseEnrollment,
+        course_id=course_id,
+        student=request.user,
+        is_active=True
+    )
+    
+    course = enrollment.course
+    
+    # Get course scenarios with completion status
+    course_scenarios = []
+    for cs in CourseScenario.objects.filter(course=course).order_by('order'):
+        completed_session = TrainingSession.objects.filter(
+            user=request.user,
+            scenario=cs.scenario,
+            is_active=False
+        ).first()
+        
+        course_scenarios.append({
+            'scenario': cs.scenario,
+            'order': cs.order,
+            'is_required': cs.is_required,
+            'pass_score': cs.pass_score,
+            'completed': completed_session is not None,
+            'score': completed_session.score if completed_session else None,
+            'passed': completed_session.score >= cs.pass_score if completed_session else False
+        })
+    
+    # Get assignments with submission status
+    assignments = []
+    for assignment in Assignment.objects.filter(course=course).order_by('due_date'):
+        submission = AssignmentSubmission.objects.filter(
+            assignment=assignment,
+            student=request.user
+        ).first()
+        
+        assignments.append({
+            'assignment': assignment,
+            'submission': submission,
+            'is_submitted': submission is not None,
+            'is_graded': submission.is_graded if submission else False,
+            'days_remaining': (assignment.due_date.date() - datetime.now().date()).days
+        })
+    
+    # Calculate overall progress
+    completed_scenarios = len([cs for cs in course_scenarios if cs['completed']])
+    total_scenarios = len(course_scenarios)
+    progress_percentage = (completed_scenarios / total_scenarios * 100) if total_scenarios > 0 else 0
+    
+    # Get class ranking (simplified)
+    all_enrollments = CourseEnrollment.objects.filter(course=course, is_active=True)
+    ranked_students = sorted(
+        [(e.student.username, e.progress) for e in all_enrollments],
+        key=lambda x: x[1],
+        reverse=True
+    )
+    
+    student_rank = next(
+        (i + 1 for i, (username, _) in enumerate(ranked_students) if username == request.user.username),
+        None
+    )
+    
+    context = {
+        'enrollment': enrollment,
+        'course': course,
+        'course_scenarios': course_scenarios,
+        'assignments': assignments,
+        'progress_percentage': progress_percentage,
+        'student_rank': student_rank,
+        'total_students': len(ranked_students)
+    }
+    
+    return render(request, 'course_detail.html', context)
+
+@login_required
+def submit_assignment(request, assignment_id):
+    """Student submits an assignment"""
+    
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    
+    # Check if student is enrolled
+    enrollment = CourseEnrollment.objects.filter(
+        student=request.user,
+        course=assignment.course,
+        is_active=True
+    ).first()
+    
+    if not enrollment:
+        messages.error(request, 'You are not enrolled in this course')
+        return redirect('student_courses')
+    
+    # Check if already submitted
+    existing_submission = AssignmentSubmission.objects.filter(
+        assignment=assignment,
+        student=request.user
+    ).first()
+    
+    if existing_submission:
+        messages.info(request, 'You have already submitted this assignment')
+        return redirect('course_detail', course_id=assignment.course.id)
+    
+    if request.method == 'POST':
+        # For simulation assignments, require a training session
+        if assignment.scenario:
+            session_id = request.POST.get('session_id')
+            
+            if not session_id:
+                messages.error(request, 'Please complete the training session first')
+                return redirect('simulation_view')
+            
+            try:
+                training_session = TrainingSession.objects.get(
+                    session_id=session_id,
+                    user=request.user
+                )
+                
+                AssignmentSubmission.objects.create(
+                    assignment=assignment,
+                    student=request.user,
+                    training_session=training_session,
+                    score=None,  # Will be graded by instructor
+                    feedback=''
+                )
+                
+                messages.success(request, 'Assignment submitted successfully!')
+                return redirect('course_detail', course_id=assignment.course.id)
+                
+            except TrainingSession.DoesNotExist:
+                messages.error(request, 'Invalid training session')
+        else:
+            # Non-simulation assignment (text submission)
+            AssignmentSubmission.objects.create(
+                assignment=assignment,
+                student=request.user
+            )
+            
+            messages.success(request, 'Assignment submitted successfully!')
+            return redirect('course_detail', course_id=assignment.course.id)
+    
+    # If GET request, show submission page
+    context = {
+        'assignment': assignment,
+        'enrollment': enrollment
+    }
+    
+    return render(request, 'submit_assignment.html', context)
+
+# simulator/views.py - ADD ENHANCED AI APIS
+
+@login_required
+@csrf_exempt
+def api_get_ai_analysis(request):
+    """Get AI analysis of student performance"""
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        
+        # Get student's session history
+        sessions = TrainingSession.objects.filter(
+            user=request.user,
+            is_active=False
+        ).order_by('-start_time')[:20]  # Last 20 sessions
+        
+        session_history = []
+        for session in sessions:
+            session_history.append({
+                'scenario_type': session.scenario.scenario_type,
+                'score': session.score,
+                'violations': session.safety_violations,
+                'duration': session.duration(),
+                'actions': session.action_count if hasattr(session, 'action_count') else 0
+            })
+        
+        # Get AI analysis
+        analysis = ai_mentor.analyze_student_learning(str(request.user.id), session_history)
+        
+        # Store in student profile
+        profile = request.user.studentprofile
+        if 'learning_analysis' not in profile.achievements:
+            profile.achievements = profile.achievements or []
+            profile.achievements.append('learning_analysis')
+        
+        # Create learning profile if not exists
+        if not hasattr(profile, 'learning_profile'):
+            profile.learning_profile = analysis
+        else:
+            profile.learning_profile.update(analysis)
+        
+        profile.save()
+        
+        return JsonResponse({
+            'success': True,
+            'analysis': analysis,
+            'recommendations': analysis.get('recommended_focus', []),
+            'knowledge_gaps': analysis.get('knowledge_gaps', [])
+        })
+    
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+@csrf_exempt
+def api_get_personalized_feedback(request, session_id):
+    """Get personalized feedback for current session"""
+    
+    sim = SimulationManager.get_session(session_id)
+    
+    if not sim:
+        return JsonResponse({'error': 'Session not found'}, status=404)
+    
+    state = sim.get_state_dict()
+    
+    # Get student profile for personalization
+    profile = request.user.studentprofile
+    learning_profile = getattr(profile, 'learning_profile', {})
+    
+    # Get enhanced AI feedback
+    feedback = ai_mentor.generate_personalized_feedback(
+        state, 
+        {'learning_analysis': learning_profile},
+        sim.action_history
+    )
+    
+    # Also get standard feedback for comparison
+    standard_feedback = ai_mentor.analyze_state(state, sim.action_history)
+    
+    return JsonResponse({
+        'personalized_feedback': feedback,
+        'standard_feedback': standard_feedback,
+        'learning_style': learning_profile.get('learning_style', 'balanced'),
+        'strengths': learning_profile.get('strengths', []),
+        'weaknesses': learning_profile.get('weaknesses', [])
+    })
+
+@login_required
+@csrf_exempt
+def api_get_learning_path(request):
+    """Get personalized learning path for student"""
+    
+    profile = request.user.studentprofile
+    learning_profile = getattr(profile, 'learning_profile', {})
+    
+    weaknesses = learning_profile.get('weaknesses', [])
+    level = learning_profile.get('level', 'beginner')
+    
+    # Recommend courses based on weaknesses
+    recommended_courses = Course.objects.filter(
+        is_published=True,
+        level=level
+    )
+    
+    # Filter courses that address weaknesses
+    if weaknesses:
+        # Find scenarios that match weaknesses
+        weakness_scenarios = SimulationScenario.objects.filter(
+            scenario_type__in=weaknesses
+        )
+        
+        # Find courses containing those scenarios
+        course_ids = CourseScenario.objects.filter(
+            scenario__in=weakness_scenarios
+        ).values_list('course_id', flat=True).distinct()
+        
+        recommended_courses = recommended_courses.filter(id__in=course_ids)
+    
+    # Limit to 3 courses
+    recommended_courses = recommended_courses[:3]
+    
+    # Get next recommended scenario
+    enrolled_courses = CourseEnrollment.objects.filter(
+        student=request.user,
+        is_active=True
+    ).values_list('course_id', flat=True)
+    
+    next_scenario = None
+    for course_id in enrolled_courses:
+        course_scenarios = CourseScenario.objects.filter(
+            course_id=course_id
+        ).order_by('order')
+        
+        for cs in course_scenarios:
+            # Check if scenario not completed
+            if not TrainingSession.objects.filter(
+                user=request.user,
+                scenario=cs.scenario,
+                is_active=False
+            ).exists():
+                next_scenario = cs.scenario
+                break
+        
+        if next_scenario:
+            break
+    
+    return JsonResponse({
+        'recommended_courses': [
+            {
+                'id': course.id,
+                'name': course.name,
+                'code': course.code,
+                'description': course.description[:100] + '...',
+                'level': course.level
+            }
+            for course in recommended_courses
+        ],
+        'next_scenario': {
+            'id': next_scenario.id if next_scenario else None,
+            'name': next_scenario.name if next_scenario else None,
+            'course': next_scenario.courses.first().code if next_scenario else None
+        },
+        'weaknesses_to_address': weaknesses,
+        'learning_style': learning_profile.get('learning_style', 'balanced')
+    })
