@@ -32,107 +32,29 @@ def login_view(request):
             messages.error(request, 'Invalid credentials')
     
     return render(request, 'login.html')  # Changed from 'simulator/login.html'
-# simulator/views.py
+
 def register_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
         email = request.POST.get('email')
-        
-        # Handle specialization (regular or "Other")
         specialization = request.POST.get('specialization', 'Nuclear Engineering')
-        if specialization == 'Other':
-            specialization = request.POST.get('other_spec', 'Nuclear Engineering')
-            if not specialization:
-                specialization = 'Nuclear Engineering'
-        
         year_of_study = request.POST.get('year_of_study', 1)
         
         from django.contrib.auth.models import User
-        from django.contrib.auth import login
-        from django.shortcuts import render, redirect
-        from .models import StudentProfile
+        user = User.objects.create_user(username=username, password=password, email=email)
         
-        # Validation checks
-        errors = []
+        # Update student profile
+        profile = user.studentprofile
+        profile.specialization = specialization
+        profile.year_of_study = year_of_study
+        profile.save()
         
-        # Check if username is provided
-        if not username:
-            errors.append('Username is required')
-        
-        # Check if password is provided
-        if not password:
-            errors.append('Password is required')
-        elif len(password) < 8:
-            errors.append('Password must be at least 8 characters long')
-        
-        # Check if email is provided
-        if not email:
-            errors.append('Email is required')
-        elif '@' not in email:
-            errors.append('Please enter a valid email address')
-        
-        # Check if username already exists
-        if username and User.objects.filter(username=username).exists():
-            errors.append('Username already exists. Please choose a different one.')
-        
-        # Check if email already exists
-        if email and User.objects.filter(email=email).exists():
-            errors.append('Email is already registered. Please use a different email or login.')
-        
-        # If there are errors, show them
-        if errors:
-            return render(request, 'register.html', {
-                'errors': errors,
-                'request': request  # Pass request to pre-fill form
-            })
-        
-        try:
-            # Convert year_of_study to integer
-            try:
-                year_of_study = int(year_of_study)
-            except (ValueError, TypeError):
-                year_of_study = 1
-            
-            # Create user
-            user = User.objects.create_user(
-                username=username,
-                password=password,
-                email=email
-            )
-            
-            # Create student profile for the user
-            # Use get_or_create to avoid duplication
-            profile, created = StudentProfile.objects.get_or_create(
-                user=user,
-                defaults={
-                    'specialization': specialization,
-                    'year_of_study': year_of_study
-                }
-            )
-            
-            if not created:
-                # Update existing profile if it already exists
-                profile.specialization = specialization
-                profile.year_of_study = year_of_study
-                profile.save()
-            
-            # Log the user in
-            login(request, user)
-            return redirect('dashboard')
-            
-        except Exception as e:
-            # Log the error (you might want to add proper logging here)
-            print(f"Registration error: {str(e)}")
-            
-            # Return to form with error message
-            return render(request, 'register.html', {
-                'errors': [f'Registration failed. Please try again.'],
-                'request': request
-            })
+        login(request, user)
+        return redirect('dashboard')
     
-    return render(request, 'register.html')
-    
+    return render(request, 'register.html')  # Changed from 'simulator/register.html'
+
 def logout_view(request):
     logout(request)
     return redirect('home')
