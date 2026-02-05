@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/session/<str:session_id>/end/', views.api_end_session, name='api_end_session'),
     path('api/scenarios/', views.api_get_scenarios, name='api_scenarios'),
     path('api/student-stats/', views.api_student_stats, name='api_student_stats'),
+     path('game/cooling/', views.cooling_game, name='cooling_game'),
 
 
     # simulator/urls.py - ADD THESE NEW URLS

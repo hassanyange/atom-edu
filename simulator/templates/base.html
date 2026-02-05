@@ -121,6 +121,13 @@
                             <i class="fas fa-user me-1"></i>Profile
                         </a>
                     </li>
+
+                    <!-- In your base.html navbar -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'cooling_game' %}">
+                            <i class="fas fa-snowflake me-1"></i>Cooling Game
+                        </a>
+                    </li>
                     {% if user.is_staff %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'admin_dashboard' %}">

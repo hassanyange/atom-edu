@@ -19,6 +19,11 @@ from .reactor_logic import SimulationManager
 
 # ===== AUTHENTICATION VIEWS =====
 
+
+@login_required
+def cooling_game(request):
+    return render(request, 'games/cooling_builder.html')
+
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')

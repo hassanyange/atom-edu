@@ -1,0 +1,548 @@
+<!-- templates/games/cooling_builder.html -->
+{% extends 'base.html' %}
+
+{% block title %}Cooling System Builder - ATOM-EDU{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Game Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-snowflake text-info me-2"></i>{{ game_title }}</h2>
+            <p class="lead">{{ game_description }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 id="score">Score: <span class="badge bg-success">0</span></h5>
+                    <h5 id="timer">Time: <span class="badge bg-primary">02:00</span></h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Layout -->
+    <div class="row">
+        <!-- Left: Reactor Display -->
+        <div class="col-md-5">
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5><i class="fas fa-reactor me-2"></i>REACTOR CORE</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="reactor-core mb-3">
+                        <div id="tempDisplay" class="display-1 text-danger">375°C</div>
+                        <div class="progress" style="height: 25px;">
+                            <div id="tempBar" class="progress-bar bg-danger" style="width: 75%"></div>
+                        </div>
+                        <small class="text-muted">Safe: 250-300°C | Danger: >350°C</small>
+                    </div>
+                    
+                    <div class="alert" id="reactorStatus">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="statusText">Reactor overheating! Build cooling system.</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Target Design -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-check-circle me-2"></i>TARGET DESIGN</h5>
+                </div>
+                <div class="card-body">
+                    <div class="target-design">
+                        <div class="step"><span class="badge bg-primary">1</span> Pump</div>
+                        <div class="step"><span class="badge bg-primary">2</span> Primary Pipe</div>
+                        <div class="step"><span class="badge bg-primary">3</span> Heat Exchanger</div>
+                        <div class="step"><span class="badge bg-primary">4</span> Secondary Pipe</div>
+                        <div class="step"><span class="badge bg-primary">5</span> Cooling Tower</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center: Building Area -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-puzzle-piece me-2"></i>BUILDING AREA</h5>
+                </div>
+                <div class="card-body">
+                    <div id="buildingArea" class="building-zone">
+                        <p class="text-muted text-center">Drag components here to build your cooling system</p>
+                        <div class="connections"></div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button id="checkSolution" class="btn btn-success btn-lg">
+                            <i class="fas fa-check me-2"></i>Test System
+                        </button>
+                        <button id="resetGame" class="btn btn-warning ms-2">
+                            <i class="fas fa-redo me-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Component Palette -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-toolbox me-2"></i>COMPONENTS</h5>
+                </div>
+                <div class="card-body">
+                    <div class="component-list">
+                        <!-- Draggable Components -->
+                        <div class="component" data-type="pump" draggable="true">
+                            <i class="fas fa-tint fa-2x text-primary"></i>
+                            <div class="component-label">Coolant Pump</div>
+                            <small class="text-muted">Starts flow</small>
+                        </div>
+                        
+                        <div class="component" data-type="pipe-primary" draggable="true">
+                            <i class="fas fa-pipe fa-2x text-secondary"></i>
+                            <div class="component-label">Primary Pipe</div>
+                            <small class="text-muted">Transports coolant</small>
+                        </div>
+                        
+                        <div class="component" data-type="heat-exchanger" draggable="true">
+                            <i class="fas fa-exchange-alt fa-2x text-warning"></i>
+                            <div class="component-label">Heat Exchanger</div>
+                            <small class="text-muted">Transfers heat</small>
+                        </div>
+                        
+                        <div class="component" data-type="pipe-secondary" draggable="true">
+                            <i class="fas fa-pipe fa-2x text-success"></i>
+                            <div class="component-label">Secondary Pipe</div>
+                            <small class="text-muted">Returns coolant</small>
+                        </div>
+                        
+                        <div class="component" data-type="cooling-tower" draggable="true">
+                            <i class="fas fa-tower fa-2x text-info"></i>
+                            <div class="component-label">Cooling Tower</div>
+                            <small class="text-muted">Dissipates heat</small>
+                        </div>
+                        
+                        <div class="component" data-type="valve" draggable="true">
+                            <i class="fas fa-faucet fa-2x text-danger"></i>
+                            <div class="component-label">Control Valve</div>
+                            <small class="text-muted">Regulates flow</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Instructions -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6><i class="fas fa-info-circle me-2"></i>How to Play:</h6>
+                    <ol class="small">
+                        <li>Drag components to building area</li>
+                        <li>Connect them in correct order</li>
+                        <li>Click "Test System" to check</li>
+                        <li>Keep reactor below 350°C</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Feedback Area -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5><i class="fas fa-robot me-2"></i>AI MENTOR FEEDBACK</h5>
+                </div>
+                <div class="card-body">
+                    <div id="aiFeedback" class="ai-feedback">
+                        <div class="alert alert-info">
+                            <strong>AI Mentor:</strong> Start by placing the coolant pump. It provides pressure to move the cooling water through the system.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Game CSS -->
+<style>
+.reactor-core {
+    padding: 30px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 10px;
+    border: 3px solid #dc3545;
+    color: white;
+}
+
+.building-zone {
+    min-height: 300px;
+    border: 3px dashed #6c757d;
+    border-radius: 10px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    transition: all 0.3s;
+}
+
+.building-zone.active {
+    border-color: #198754;
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+.component {
+    padding: 15px;
+    margin: 10px 0;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: move;
+    text-align: center;
+    transition: all 0.2s;
+    background: white;
+}
+
+.component:hover {
+    border-color: #0d6efd;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.component.dragging {
+    opacity: 0.5;
+}
+
+.component.placed {
+    border-color: #198754;
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+.component-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.target-design .step {
+    padding: 10px;
+    margin: 5px 0;
+    background: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+    border-radius: 4px;
+}
+
+.connections {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+    min-height: 60px;
+}
+
+.ai-feedback {
+    min-height: 80px;
+}
+</style>
+
+<!-- Game JavaScript -->
+<script>
+class CoolingSystemGame {
+    constructor() {
+        this.score = 0;
+        this.timeLeft = 120; // 2 minutes in seconds
+        this.temperature = 375;
+        this.placedComponents = [];
+        this.correctOrder = ['pump', 'pipe-primary', 'heat-exchanger', 'pipe-secondary', 'cooling-tower'];
+        this.gameActive = true;
+        this.timerInterval = null;
+        
+        this.initializeGame();
+    }
+    
+    initializeGame() {
+        // Initialize drag and drop
+        this.setupDragAndDrop();
+        
+        // Start timer
+        this.startTimer();
+        
+        // Setup event listeners
+        document.getElementById('checkSolution').addEventListener('click', () => this.checkSolution());
+        document.getElementById('resetGame').addEventListener('click', () => this.resetGame());
+    }
+    
+    setupDragAndDrop() {
+        const components = document.querySelectorAll('.component');
+        const buildingArea = document.getElementById('buildingArea');
+        
+        components.forEach(component => {
+            component.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', component.dataset.type);
+                component.classList.add('dragging');
+            });
+            
+            component.addEventListener('dragend', () => {
+                component.classList.remove('dragging');
+            });
+        });
+        
+        buildingArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            buildingArea.classList.add('active');
+        });
+        
+        buildingArea.addEventListener('dragleave', () => {
+            buildingArea.classList.remove('active');
+        });
+        
+        buildingArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            buildingArea.classList.remove('active');
+            
+            const componentType = e.dataTransfer.getData('text/plain');
+            this.placeComponent(componentType, e.offsetX, e.offsetY);
+        });
+    }
+    
+    placeComponent(type, x, y) {
+        if (!this.gameActive) return;
+        
+        // Check if component already placed
+        if (this.placedComponents.includes(type)) {
+            this.showFeedback(`⚠️ You already placed a ${type.replace('-', ' ')}`, 'warning');
+            return;
+        }
+        
+        // Create visual element
+        const componentDiv = document.createElement('div');
+        componentDiv.className = `component placed`;
+        componentDiv.dataset.type = type;
+        componentDiv.style.position = 'absolute';
+        componentDiv.style.left = `${x - 50}px`;
+        componentDiv.style.top = `${y - 50}px`;
+        componentDiv.style.width = '100px';
+        componentDiv.style.height = '80px';
+        
+        // Add appropriate icon and label
+        const icons = {
+            'pump': 'fa-tint',
+            'pipe-primary': 'fa-pipe',
+            'heat-exchanger': 'fa-exchange-alt',
+            'pipe-secondary': 'fa-pipe',
+            'cooling-tower': 'fa-tower',
+            'valve': 'fa-faucet'
+        };
+        
+        const colors = {
+            'pump': 'primary',
+            'pipe-primary': 'secondary',
+            'heat-exchanger': 'warning',
+            'pipe-secondary': 'success',
+            'cooling-tower': 'info',
+            'valve': 'danger'
+        };
+        
+        componentDiv.innerHTML = `
+            <i class="fas ${icons[type]} text-${colors[type]}"></i>
+            <div class="small">${type.replace('-', ' ')}</div>
+        `;
+        
+        // Add to building area
+        document.getElementById('buildingArea').appendChild(componentDiv);
+        
+        // Add to placed components
+        this.placedComponents.push(type);
+        
+        // Update score
+        this.score += 10;
+        this.updateScore();
+        
+        // Show feedback
+        this.showFeedback(`✅ Placed ${type.replace('-', ' ')}. ${this.getComponentHint(type)}`, 'success');
+    }
+    
+    getComponentHint(type) {
+        const hints = {
+            'pump': 'Good start! The pump creates pressure.',
+            'pipe-primary': 'Pipes transport radioactive coolant.',
+            'heat-exchanger': 'This transfers heat to secondary loop.',
+            'pipe-secondary': 'Non-radioactive water flows here.',
+            'cooling-tower': 'Final heat dissipation point.',
+            'valve': 'Valves control flow rate.'
+        };
+        return hints[type] || '';
+    }
+    
+    checkSolution() {
+        if (!this.gameActive) return;
+        
+        // Check if all components are placed
+        if (this.placedComponents.length < 5) {
+            this.showFeedback('❌ Need more components! Place all 5 main components.', 'danger');
+            return;
+        }
+        
+        // Check order (simplified - just check if all required are present)
+        const requiredPresent = this.correctOrder.every(item => 
+            this.placedComponents.includes(item)
+        );
+        
+        if (requiredPresent) {
+            // Success!
+            this.temperature = 280; // Cooled reactor
+            this.score += 500;
+            this.gameActive = false;
+            clearInterval(this.timerInterval);
+            
+            this.updateTemperature();
+            this.updateScore();
+            
+            this.showFeedback(
+                '🎉 SUCCESS! Cooling system working! Reactor temperature stabilized. ' +
+                'You prevented a meltdown!', 
+                'success'
+            );
+            
+            // Add bonus for time remaining
+            const timeBonus = this.timeLeft * 2;
+            this.score += timeBonus;
+            this.updateScore();
+            
+            // Show completion message
+            setTimeout(() => {
+                alert(`Mission Complete!\nFinal Score: ${this.score}\nTime Bonus: ${timeBonus}\n\nReactor saved from meltdown!`);
+            }, 500);
+            
+        } else {
+            // Failed
+            this.temperature += 25; // Reactor heats up
+            this.score -= 50;
+            
+            if (this.temperature >= 400) {
+                this.gameOver();
+            } else {
+                this.showFeedback(
+                    '⚠️ Cooling system incomplete! Check the target design for correct order.', 
+                    'warning'
+                );
+                this.updateTemperature();
+                this.updateScore();
+            }
+        }
+    }
+    
+    updateTemperature() {
+        document.getElementById('tempDisplay').textContent = `${this.temperature}°C`;
+        const tempPercent = Math.min(100, (this.temperature / 400) * 100);
+        document.getElementById('tempBar').style.width = `${tempPercent}%`;
+        
+        // Update status
+        const statusEl = document.getElementById('reactorStatus');
+        const statusText = document.getElementById('statusText');
+        
+        if (this.temperature > 350) {
+            statusEl.className = 'alert alert-danger';
+            statusText.textContent = '🚨 CRITICAL! Reactor overheating!';
+        } else if (this.temperature > 300) {
+            statusEl.className = 'alert alert-warning';
+            statusText.textContent = '⚠️ Warning: Temperature rising';
+        } else {
+            statusEl.className = 'alert alert-success';
+            statusText.textContent = '✅ Reactor stable';
+        }
+    }
+    
+    updateScore() {
+        document.getElementById('score').innerHTML = 
+            `Score: <span class="badge bg-success">${this.score}</span>`;
+    }
+    
+    startTimer() {
+        this.timerInterval = setInterval(() => {
+            if (this.timeLeft > 0 && this.gameActive) {
+                this.timeLeft--;
+                
+                // Update timer display
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                document.getElementById('timer').innerHTML = 
+                    `Time: <span class="badge bg-primary">${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}</span>`;
+                
+                // Gradually increase temperature
+                if (this.timeLeft % 10 === 0) {
+                    this.temperature += 5;
+                    this.updateTemperature();
+                }
+                
+                // Emergency warning at 30 seconds
+                if (this.timeLeft === 30) {
+                    this.showFeedback('⏰ 30 seconds left! Reactor temperature rising fast!', 'danger');
+                }
+                
+            } else if (this.timeLeft <= 0 && this.gameActive) {
+                this.gameOver();
+            }
+        }, 1000);
+    }
+    
+    gameOver() {
+        this.gameActive = false;
+        clearInterval(this.timerInterval);
+        
+        this.showFeedback(
+            '💥 REACTOR MELTDOWN! Cooling system failed to stabilize temperature in time.', 
+            'danger'
+        );
+        
+        setTimeout(() => {
+            alert(`GAME OVER\nReactor core breach!\nFinal Score: ${this.score}\n\nTry again with correct component order.`);
+            this.resetGame();
+        }, 1000);
+    }
+    
+    showFeedback(message, type) {
+        const feedbackDiv = document.getElementById('aiFeedback');
+        const alertClass = `alert alert-${type}`;
+        
+        const feedbackHTML = `
+            <div class="${alertClass}">
+                <strong>AI Mentor:</strong> ${message}
+            </div>
+        `;
+        
+        feedbackDiv.innerHTML = feedbackHTML;
+    }
+    
+    resetGame() {
+        // Clear placed components
+        const buildingArea = document.getElementById('buildingArea');
+        const placedComponents = buildingArea.querySelectorAll('.component.placed');
+        placedComponents.forEach(comp => comp.remove());
+        
+        // Reset variables
+        this.score = 0;
+        this.timeLeft = 120;
+        this.temperature = 375;
+        this.placedComponents = [];
+        this.gameActive = true;
+        
+        // Reset displays
+        this.updateTemperature();
+        this.updateScore();
+        document.getElementById('timer').innerHTML = 
+            `Time: <span class="badge bg-primary">02:00</span>`;
+        
+        // Clear feedback
+        this.showFeedback('System reset. Build the cooling circuit to prevent meltdown!', 'info');
+        
+        // Restart timer
+        clearInterval(this.timerInterval);
+        this.startTimer();
+    }
+}
+
+// Initialize game when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    window.game = new CoolingSystemGame();
+});
+</script>
+{% endblock %}
